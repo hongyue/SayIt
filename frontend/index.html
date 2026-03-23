@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SayIt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 2rem 1rem; }
+    #app { width: 100%; max-width: 640px; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: #f1f5f9; }
+    .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; color: #94a3b8; margin-bottom: 0.5rem; }
+    select, textarea { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #e2e8f0; font-family: inherit; font-size: 0.875rem; outline: none; transition: border-color 0.2s; }
+    select:focus, textarea:focus { border-color: #3b82f6; }
+    select:disabled, textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+    textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+    .row { display: flex; gap: 1rem; }
+    .row > * { flex: 1; }
+    .char-count { text-align: right; font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+    .file-upload { margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem; }
+    .file-upload input[type="file"] { display: none; }
+    .file-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: transparent; color: #94a3b8; font-size: 0.8125rem; cursor: pointer; transition: all 0.2s; }
+    .file-btn:hover:not(.disabled) { border-color: #3b82f6; color: #e2e8f0; }
+    .file-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .file-name { font-size: 0.8125rem; color: #64748b; }
+    .btn-generate { width: 100%; padding: 0.75rem; border: none; border-radius: 8px; background: #3b82f6; color: #fff; font-family: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-generate:hover { background: #2563eb; }
+    .btn-generate:disabled { background: #475569; cursor: not-allowed; }
+    .btn-generate.streaming { background: #10b981; }
+    .btn-generate.streaming:hover { background: #059669; }
+    .btn-stop { padding: 0.75rem; border: none; border-radius: 8px; background: #ef4444; color: #fff; font-family: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn-stop:hover { background: #dc2626; }
+    .btn-stop:disabled { background: #475569; cursor: not-allowed; opacity: 0.5; }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result { display: none; }
+    .result.show { display: block; }
+    audio { width: 100%; margin-bottom: 0.75rem; border-radius: 8px; }
+    .btn-download { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border: 1px solid #334155; border-radius: 6px; background: transparent; color: #e2e8f0; font-family: inherit; font-size: 0.8125rem; font-weight: 500; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+    .btn-download:hover { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+    .error { padding: 0.75rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; color: #fca5a5; font-size: 0.875rem; margin-bottom: 1rem; }
+    .streaming-status { padding: 0.75rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; color: #6ee7b7; font-size: 0.875rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .streaming-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .toggle { position: relative; width: 180px; height: 36px; background: #334155; border-radius: 18px; display: flex; align-items: center; padding: 4px; cursor: pointer; transition: all 0.3s; }
+    .toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toggle-slider { position: absolute; width: calc(50% - 4px); height: 28px; background: #3b82f6; border-radius: 14px; transition: transform 0.3s; }
+    .toggle.streaming .toggle-slider { transform: translateX(100%); background: #10b981; }
+    .toggle-label { flex: 1; text-align: center; font-size: 0.8125rem; font-weight: 500; z-index: 1; transition: color 0.3s; user-select: none; }
+    .toggle-label.active { color: #fff; }
+    .toggle-label:not(.active) { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>SayIt</h1>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="voice">Voice</label>
+          <select id="voice" v-model="selectedVoice" :disabled="isWorking">
+            <optgroup v-for="(data, lang) in voices" :key="lang" :label="lang">
+              <option v-for="v in data.voices" :key="v.name" :value="v.name">
+                {{ v.label }} ({{ v.gender }})
+              </option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label for="speed">Speed</label>
+          <select id="speed" v-model="speed" :disabled="isWorking">
+            <option :value="0.5">0.5x (Slow)</option>
+            <option :value="0.75">0.75x</option>
+            <option :value="1.0">1.0x (Normal)</option>
+            <option :value="1.25">1.25x</option>
+            <option :value="1.5">1.5x</option>
+            <option :value="2.0">2.0x (Fast)</option>
+          </select>
+        </div>
+        <div>
+          <label for="format">Format</label>
+          <select id="format" v-model="format" :disabled="isWorking">
+            <option value="wav">WAV</option>
+            <option value="mp3">MP3</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label for="text">Text</label>
+      <textarea id="text" v-model="text" placeholder="Enter text to convert to speech..." :disabled="isWorking"></textarea>
+      <div class="char-count">{{ text.length.toLocaleString() }} characters</div>
+      <div class="file-upload">
+        <label class="file-btn" :class="{ disabled: isWorking }">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload .txt
+          <input type="file" accept=".txt" @change="handleFileUpload" :disabled="isWorking">
+        </label>
+        <span class="file-name" v-if="fileName">{{ fileName }}</span>
+      </div>
+    </div>
+
+    <div v-if="error" class="error">{{ error }}</div>
+
+    <div v-if="loading && !streaming" class="streaming-status">
+      <div class="streaming-dot"></div>
+      Converting audio...
+    </div>
+
+    <div v-if="streaming" class="streaming-status">
+      <div class="streaming-dot"></div>
+      Streaming audio... ({{ chunksPlayed }} chunks played)
+    </div>
+
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <template v-if="!isWorking">
+        <button class="toggle" :class="{ streaming: useStreaming }" @click="toggleMode">
+          <div class="toggle-slider"></div>
+          <span class="toggle-label" :class="{ active: !useStreaming }">Convert</span>
+          <span class="toggle-label" :class="{ active: useStreaming }">Streaming</span>
+        </button>
+        <button class="btn-generate" :class="{ streaming: useStreaming }" @click="handleGenerate" :disabled="!text.trim()" style="flex: 1;">
+          <span>{{ useStreaming ? 'Stream' : 'Convert' }}</span>
+        </button>
+      </template>
+      <button v-if="isWorking" class="btn-stop" @click="stop" style="width: 100%;">
+        Stop
+      </button>
+    </div>
+
+    <div class="card result" :class="{ show: audioUrl && !isWorking }" v-if="audioUrl && !isWorking" style="margin-top: 1rem;">
+      <audio :src="audioUrl" controls></audio>
+      <a class="btn-download" :href="audioUrl" :download="'tts.' + format">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download {{ format.toUpperCase() }}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue
+
+    createApp({
+      setup() {
+        const voices = ref({})
+        const selectedVoice = ref('af_heart')
+        const speed = ref(1.0)
+        const format = ref('wav')
+        const text = ref('')
+        const loading = ref(false)
+        const audioUrl = ref(null)
+        const error = ref(null)
+        const fileName = ref('')
+        const useStreaming = ref(false)
+        const streaming = ref(false)
+        const chunksPlayed = ref(0)
+
+        let audioContext = null
+        let abortController = null
+        let currentSource = null
+        let playbackStopped = false
+
+        const isWorking = computed(() => loading.value || streaming.value)
+
+        const fetchVoices = async () => {
+          try {
+            const res = await fetch('/api/voices')
+            voices.value = await res.json()
+          } catch (e) {
+            error.value = 'Failed to load voices'
+          }
+        }
+
+        const handleFileUpload = (event) => {
+          if (isWorking.value) return
+          const file = event.target.files[0]
+          if (!file) return
+          fileName.value = file.name
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            text.value = e.target.result
+          }
+          reader.readAsText(file)
+        }
+
+        const toggleMode = () => {
+          if (isWorking.value) return
+          useStreaming.value = !useStreaming.value
+        }
+
+        const stop = () => {
+          playbackStopped = true
+          if (abortController) {
+            abortController.abort()
+            abortController = null
+          }
+          if (currentSource) {
+            try { currentSource.stop() } catch (e) {}
+            currentSource = null
+          }
+          if (audioContext) {
+            audioContext.close()
+            audioContext = null
+          }
+          loading.value = false
+          streaming.value = false
+          error.value = null
+        }
+
+        const generateStandard = async () => {
+          loading.value = true
+          error.value = null
+          if (audioUrl.value) {
+            URL.revokeObjectURL(audioUrl.value)
+            audioUrl.value = null
+          }
+
+          abortController = new AbortController()
+
+          try {
+            const res = await fetch('/api/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: text.value,
+                voice: selectedVoice.value,
+                speed: speed.value,
+                format: format.value,
+              }),
+              signal: abortController.signal,
+            })
+
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}))
+              throw new Error(data.detail || `Request failed (${res.status})`)
+            }
+
+            const blob = await res.blob()
+            audioUrl.value = URL.createObjectURL(blob)
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              error.value = e.message
+            }
+          } finally {
+            loading.value = false
+            abortController = null
+          }
+        }
+
+        const encodeWAV = (audioBuffer) => {
+          const numChannels = audioBuffer.numberOfChannels
+          const sampleRate = audioBuffer.sampleRate
+          const length = audioBuffer.length
+          const bytesPerSample = 2
+          const blockAlign = numChannels * bytesPerSample
+          const byteRate = sampleRate * blockAlign
+          const dataSize = length * blockAlign
+          const buffer = new ArrayBuffer(44 + dataSize)
+          const view = new DataView(buffer)
+
+          const writeString = (offset, str) => {
+            for (let i = 0; i < str.length; i++) {
+              view.setUint8(offset + i, str.charCodeAt(i))
+            }
+          }
+
+          writeString(0, 'RIFF')
+          view.setUint32(4, 36 + dataSize, true)
+          writeString(8, 'WAVE')
+          writeString(12, 'fmt ')
+          view.setUint32(16, 16, true)
+          view.setUint16(20, 1, true)
+          view.setUint16(22, numChannels, true)
+          view.setUint32(24, sampleRate, true)
+          view.setUint32(28, byteRate, true)
+          view.setUint16(32, blockAlign, true)
+          view.setUint16(34, 16, true)
+          writeString(36, 'data')
+          view.setUint32(40, dataSize, true)
+
+          const channelData = audioBuffer.getChannelData(0)
+          let offset = 44
+          for (let i = 0; i < length; i++) {
+            const sample = Math.max(-1, Math.min(1, channelData[i]))
+            view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+            offset += 2
+          }
+
+          return new Blob([buffer], { type: 'audio/wav' })
+        }
+
+        const generateStreaming = async () => {
+          loading.value = true
+          streaming.value = true
+          error.value = null
+          chunksPlayed.value = 0
+          playbackStopped = false
+          if (audioUrl.value) {
+            URL.revokeObjectURL(audioUrl.value)
+            audioUrl.value = null
+          }
+
+          abortController = new AbortController()
+
+          if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 })
+          }
+
+          const audioQueue = []
+          const allBuffers = []
+          let isPlaying = false
+          let dataComplete = false
+
+          const checkComplete = () => {
+            if (dataComplete && !isPlaying && audioQueue.length === 0) {
+              streaming.value = false
+            }
+          }
+
+          const playNext = () => {
+            if (playbackStopped || audioQueue.length === 0) {
+              isPlaying = false
+              checkComplete()
+              return
+            }
+            isPlaying = true
+            const audioBuffer = audioQueue.shift()
+            currentSource = audioContext.createBufferSource()
+            currentSource.buffer = audioBuffer
+            currentSource.connect(audioContext.destination)
+            currentSource.onended = () => {
+              currentSource = null
+              playNext()
+            }
+            currentSource.start()
+            chunksPlayed.value++
+          }
+
+          try {
+            const res = await fetch('/api/generate/stream', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: text.value,
+                voice: selectedVoice.value,
+                speed: speed.value,
+                format: 'wav',
+              }),
+              signal: abortController.signal,
+            })
+
+            if (!res.ok) {
+              throw new Error(`Request failed (${res.status})`)
+            }
+
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+
+            while (!playbackStopped) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split('\n')
+              buffer = lines.pop()
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6)
+                  if (data === '[DONE]') {
+                    if (allBuffers.length > 0) {
+                      const totalLength = allBuffers.reduce((sum, b) => sum + b.length, 0)
+                      const merged = audioContext.createBuffer(1, totalLength, audioContext.sampleRate)
+                      const channelData = merged.getChannelData(0)
+                      let offset = 0
+                      for (const buf of allBuffers) {
+                        channelData.set(buf.getChannelData(0), offset)
+                        offset += buf.length
+                      }
+                      const blob = encodeWAV(merged)
+                      audioUrl.value = URL.createObjectURL(blob)
+                    }
+                    dataComplete = true
+                    checkComplete()
+                    return
+                  }
+
+                  try {
+                    const parsed = JSON.parse(data)
+                    if (parsed.error) {
+                      throw new Error(parsed.error)
+                    }
+                    if (parsed.audio) {
+                      const wavBytes = Uint8Array.from(atob(parsed.audio), c => c.charCodeAt(0))
+                      const audioBuffer = await audioContext.decodeAudioData(wavBytes.buffer)
+                      
+                      allBuffers.push(audioBuffer)
+                      audioQueue.push(audioBuffer)
+                      if (!isPlaying) {
+                        playNext()
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Error processing audio chunk:', e)
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              error.value = e.message
+            }
+            streaming.value = false
+          } finally {
+            loading.value = false
+            abortController = null
+          }
+        }
+
+        const handleGenerate = () => {
+          if (isWorking.value) return
+          if (useStreaming.value) {
+            generateStreaming()
+          } else {
+            generateStandard()
+          }
+        }
+
+        onMounted(fetchVoices)
+
+        return {
+          voices,
+          selectedVoice,
+          speed,
+          format,
+          text,
+          loading,
+          audioUrl,
+          error,
+          fileName,
+          handleFileUpload,
+          handleGenerate,
+          toggleMode,
+          stop,
+          useStreaming,
+          streaming,
+          chunksPlayed,
+          isWorking,
+        }
+      },
+    }).mount('#app')
+  </script>
+</body>
+</html>
