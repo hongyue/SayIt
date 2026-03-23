@@ -2,7 +2,7 @@
 
 A TTS Web App powered by [Kokoro TTS](https://github.com/hexgrad/kokoro) (82M parameter model).
 
-<img src="img/screenshot.png" alt="description" width="600">
+<img src="img/screenshot.png" alt="screenshot" width="600">
 
 ## Quick Start
 
