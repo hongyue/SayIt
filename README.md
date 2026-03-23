@@ -2,6 +2,8 @@
 
 A TTS Web App powered by [Kokoro TTS](https://github.com/hexgrad/kokoro) (82M parameter model).
 
+<img src="img/screenshot.png" alt="description" width="600">
+
 ## Quick Start
 
 ### Prerequisites
@@ -98,29 +100,6 @@ data: [DONE]
 
 - **WAV:** 24kHz, 16-bit PCM, mono
 - **MP3:** 192kbps bitrate (requires ffmpeg)
-
-## Troubleshooting
-
-### "No module named 'ordered_set'"
-```bash
-pip install ordered-set
-```
-
-### "No module named 'pypinyin'" (Chinese voices)
-```bash
-pip install pypinyin cn2an jieba
-```
-
-### MeCab initialization error (Japanese voices)
-```bash
-pip install unidic-lite
-```
-
-### espeak-ng not found
-Install espeak-ng for your system (see Prerequisites).
-
-### ffmpeg not found
-Install ffmpeg for MP3 support (see Prerequisites).
 
 ## License
 

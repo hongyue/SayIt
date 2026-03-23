@@ -8,28 +8,36 @@ No authentication required. Frontend served as static files via Vue 3 CDN.
 ## Quick Start
 
 ```bash
+cd src
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Server runs at http://localhost:8000
+Server runs at http://localhost:8000. Must run from `src/` directory.
 
 ## Project Structure
 
 ```
-sayit/
-├── app/
-│   ├── main.py              # FastAPI app, lifespan, static serving
-│   ├── config.py            # Voice list, constants (CHUNK_SIZE=1500, SAMPLE_RATE=24000)
-│   ├── models/
-│   │   └── schemas.py       # Pydantic: TTSRequest (text, voice, speed, format)
-│   ├── routers/
-│   │   └── tts.py           # Endpoints: GET /api/voices, POST /api/generate
-│   └── services/
-│       └── tts_service.py   # Kokoro pipeline, auto-chunking, audio generation
-├── frontend/
-│   └── index.html           # Vue 3 CDN app (single file)
-└── requirements.txt
+SayIt/
+├── AGENTS.md
+├── src/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py              # FastAPI app, lifespan, static serving
+│   │   ├── config.py            # Voice list, constants (CHUNK_SIZE=2000, SAMPLE_RATE=24000)
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   └── schemas.py       # Pydantic: TTSRequest (text, voice, speed, format)
+│   │   ├── routers/
+│   │   │   ├── __init__.py
+│   │   │   └── tts.py           # Endpoints: GET /api/voices, POST /api/generate
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       └── tts_service.py   # Kokoro pipeline, auto-chunking, audio generation
+│   ├── frontend/
+│   │   └── index.html           # Vue 3 CDN app (single file)
+│   └── requirements.txt
+└── .gitignore
 ```
 
 ## API Endpoints
@@ -67,26 +75,21 @@ data: {"audio": "base64_encoded_wav_chunk"}
 data: [DONE]
 ```
 
-## Code Style Guidelines
+## Build / Lint / Test Commands
 
-### Python Conventions
-- **Imports**: Standard library first, then third-party, then local
-- **Formatting**: PEP 8, 4-space indentation
-- **Type hints**: Use for function signatures (e.g., `def generate(self, text: str) -> bytes:`)
-- **Naming**: snake_case for functions/variables, PascalCase for classes
-- **Logging**: Use `logging.getLogger(__name__)` at module level
+```bash
+# Install dependencies (from src/)
+cd src && pip install -r requirements.txt
 
-### Error Handling
-- Raise `ValueError` for invalid input
-- Use `HTTPException` in routers with appropriate status codes
-- Log errors with `logger.error(..., exc_info=True)` for debugging
+# Run dev server with auto-reload (from src/)
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-### Async Patterns
-- Use `asyncio.get_event_loop().run_in_executor()` for CPU-bound tasks
-- Keep sync functions separate (prefix with `_`)
-- Use `@asynccontextmanager` for lifespan events
+# Run server (production)
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
-## Testing Commands
+No test suite exists. No linting/type-checking tooling is configured (no pytest, ruff, mypy, etc.).
+To verify changes, use the manual curl tests below:
 
 ```bash
 # Test voices endpoint
@@ -123,43 +126,70 @@ curl -X POST http://localhost:8000/api/generate/stream \
   -N
 ```
 
+## Code Style Guidelines
+
+### Imports
+- Standard library first, then third-party, then local (`app.*`)
+- One blank line between import groups
+- Prefer explicit imports over `from x import *`
+
+### Formatting
+- PEP 8, 4-space indentation
+- No formatter/linter configured in project
+
+### Type Hints
+- Use for all function signatures (e.g., `def generate(self, text: str) -> bytes:`)
+- Use `Optional[T]` from `typing` for nullable params
+- Use `Literal` for constrained string choices (see `schemas.py`)
+
+### Naming
+- `snake_case` for functions, variables, module names
+- `PascalCase` for classes
+- Private/internal methods prefixed with `_` (e.g., `_generate_sync`, `_chunk_text`)
+
+### Logging
+- `logger = logging.getLogger(__name__)` at module level
+- Use f-strings in log messages: `logger.info(f"TTS request: voice='{payload.voice}'")`
+- Use `logger.error(..., exc_info=True)` for exception tracebacks
+
+### Error Handling
+- Raise `ValueError` for invalid input in services
+- Use `HTTPException(status_code=400)` for bad requests in routers
+- Use `HTTPException(status_code=500)` for internal errors in routers
+- Catch broad `Exception` in route handlers, log with `exc_info=True`
+
+### Async Patterns
+- Use `asyncio.get_event_loop().run_in_executor(None, ...)` for CPU-bound Kokoro calls
+- Sync implementations prefixed with `_` (e.g., `_generate_sync`)
+- Use `@asynccontextmanager` for lifespan events
+- Streaming uses `threading.Thread` + `asyncio.Queue` pattern
+
+### Pydantic Models
+- Define in `app/models/schemas.py`
+- Use `Field(...)` with validation constraints (`min_length`, `max_length`, `ge`, `le`)
+- Use `Literal` for enum-like fields
+
 ## Key Implementation Notes
 
 ### Auto-Chunking
-Text > 1500 characters is automatically split on sentence boundaries:
+Text > 2000 characters is automatically split on sentence boundaries:
 - Splits on `.`, `!`, `?` followed by whitespace
-- Long sentences are split at CHUNK_SIZE (1500 chars)
-- Audio chunks are concatenated seamlessly
+- Long sentences are split at CHUNK_SIZE (2000 chars)
+- Audio chunks are concatenated seamlessly via `np.concatenate`
 
 ### Voice Languages
-Supported: US English (20), UK English (8), Japanese (5), Mandarin Chinese (8), Spanish (3), French (1), Hindi (4), Italian (2), Brazilian Portuguese (3)
-
-Korean is NOT supported by Kokoro.
+Supported: US English (20), UK English (8), Japanese (5), Mandarin Chinese (8), Spanish (3), French (1), Hindi (4), Italian (2), Brazilian Portuguese (3). Korean is NOT supported.
 
 ### Audio Format
 - WAV: 24kHz, 16-bit PCM, mono
-- MP3: 192kbps bitrate (requires ffmpeg)
+- MP3: 192kbps bitrate (requires ffmpeg + pydub)
 
-## Dependencies
+### Dependencies
+Core: kokoro, fastapi, uvicorn, pydantic, soundfile, numpy, pydub.
+Chinese: pypinyin, cn2an, jieba.
+Japanese: fugashi, jaconv, mojimoji, unidic-lite, pyopenjtalk.
 
-### Core
-- kokoro>=0.9.4 (TTS model)
-- fastapi>=0.100.0 (web framework)
-- uvicorn[standard]>=0.20.0 (ASGI server)
-- pydantic>=2.0.0 (validation)
-- soundfile>=0.12.0 (audio I/O)
-- numpy>=1.20.0 (array operations)
-- pydub>=0.25.0 (MP3 conversion)
-
-### Chinese Support
-- pypinyin>=0.44.0, cn2an>=0.5.0, jieba>=0.42.0
-
-### Japanese Support
-- fugashi>=1.2.0, jaconv>=0.3.0, mojimoji>=0.0.13
-- unidic-lite>=1.0.8, pyopenjtalk>=0.3.0
-
-## System Requirements
-
+### System Requirements
 - Python 3.10-3.12
 - espeak-ng (for non-English languages)
 - ffmpeg (for MP3 support)
@@ -167,7 +197,10 @@ Korean is NOT supported by Kokoro.
 ## Common Tasks
 
 ### Add New Voice
-Edit `app/config.py`, add voice to VOICES dict with name, label, gender.
+Edit `src/app/config.py`, add voice to `VOICES` dict with name, label, gender. The `VOICE_LANG_MAP` is auto-derived.
 
 ### Add New Endpoint
-Create function in `app/routers/tts.py` with `@router.get()` or `@router.post()`.
+Create function in `src/app/routers/tts.py` with `@router.get()` or `@router.post()`.
+
+### Add New Router
+Create file in `src/app/routers/`, import and register in `src/app/main.py` via `app.include_router()`.
