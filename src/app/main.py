@@ -36,9 +36,9 @@ app.add_middleware(
 )
 
 app.include_router(tts.router, prefix="/api")
-app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+app.mount("/frontend", StaticFiles(directory="src/frontend"), name="frontend")
 
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return FileResponse("frontend/index.html")
+    return FileResponse("src/frontend/index.html")

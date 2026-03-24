@@ -2,24 +2,43 @@
 
 ## Project Overview
 
-Public Text-to-Speech API server using Python FastAPI and Kokoro TTS (82M parameter model).
+Public Text-to-Speech Web App using Python FastAPI and Kokoro TTS (82M parameter model).
 No authentication required. Frontend served as static files via Vue 3 CDN.
 
 ## Quick Start
 
 ```bash
-cd src
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Install dependencies and create .venv
+uv sync
+
+# Run dev server
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Server runs at http://localhost:8000. Must run from `src/` directory.
+Server runs at http://localhost:8000. Run from project root.
+
+### System Dependencies (non-Python)
+
+```bash
+# macOS
+brew install espeak-ng ffmpeg
+
+# Debian/Ubuntu
+apt install -y espeak-ng ffmpeg
+```
+
+- `espeak-ng` — required for non-English voices
+- `ffmpeg` — required for MP3 output
 
 ## Project Structure
 
 ```
 SayIt/
 ├── AGENTS.md
+├── pyproject.toml               # Project metadata, deps, uv config
+├── .python-version              # Python 3.12
+├── uv.lock                      # Lockfile (auto-generated, commit to VCS)
+├── .venv/                       # Virtualenv (auto-generated, git-ignored)
 ├── src/
 │   ├── app/
 │   │   ├── __init__.py
@@ -34,9 +53,10 @@ SayIt/
 │   │   └── services/
 │   │       ├── __init__.py
 │   │       └── tts_service.py   # Kokoro pipeline, auto-chunking, audio generation
-│   ├── frontend/
-│   │   └── index.html           # Vue 3 CDN app (single file)
-│   └── requirements.txt
+│   └── frontend/
+│       └── index.html           # Vue 3 CDN app (single file)
+├── img/
+├── LICENSE.md
 └── .gitignore
 ```
 
@@ -78,14 +98,14 @@ data: [DONE]
 ## Build / Lint / Test Commands
 
 ```bash
-# Install dependencies (from src/)
-cd src && pip install -r requirements.txt
+# Install dependencies (creates .venv, generates uv.lock)
+uv sync
 
-# Run dev server with auto-reload (from src/)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Run dev server with auto-reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Run server (production)
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 No test suite exists. No linting/type-checking tooling is configured (no pytest, ruff, mypy, etc.).
@@ -185,14 +205,17 @@ Supported: US English (20), UK English (8), Japanese (5), Mandarin Chinese (8), 
 - MP3: 192kbps bitrate (requires ffmpeg + pydub)
 
 ### Dependencies
-Core: kokoro, fastapi, uvicorn, pydantic, soundfile, numpy, pydub.
+All dependencies are declared in `pyproject.toml`. Core: kokoro, torch, fastapi, uvicorn, pydantic, soundfile, numpy, pydub.
 Chinese: pypinyin, cn2an, jieba.
 Japanese: fugashi, jaconv, mojimoji, unidic-lite, pyopenjtalk.
 
 ### System Requirements
 - Python 3.10-3.12
+- uv (package manager) — manages `.venv/` and `uv.lock`
 - espeak-ng (for non-English languages)
 - ffmpeg (for MP3 support)
+- On Linux: torch is installed as CPU-only (from PyTorch CPU index)
+- On macOS: torch includes MPS (Apple GPU) support
 
 ## Common Tasks
 
@@ -204,3 +227,10 @@ Create function in `src/app/routers/tts.py` with `@router.get()` or `@router.pos
 
 ### Add New Router
 Create file in `src/app/routers/`, import and register in `src/app/main.py` via `app.include_router()`.
+
+### Add New Dependency
+```bash
+uv add <package-name>       # adds to pyproject.toml and updates uv.lock
+uv remove <package-name>    # removes dependency
+uv sync                     # sync .venv with pyproject.toml
+```

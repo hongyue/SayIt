@@ -2,7 +2,7 @@
 
 A TTS Web App powered by [Kokoro TTS](https://github.com/hexgrad/kokoro) (82M parameter model).
 
-![screenshot](img/screenshot1.png)
+![screenshot](img/screenshot.png)
 
 ## Quick Start
 
@@ -32,17 +32,17 @@ git clone <repository-url>
 cd sayit
 
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Start Server
 
 ```bash
 # Development (with auto-reload)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Production
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Server runs at **http://localhost:8000**
@@ -51,55 +51,14 @@ Server runs at **http://localhost:8000**
 
 Press `Ctrl+C` in the terminal where the server is running.
 
-## API Endpoints
+## Model Download
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | Vue frontend |
-| GET | `/api/voices` | List all available voices |
-| POST | `/api/generate` | Generate complete audio (returns WAV/MP3) |
-| POST | `/api/generate/stream` | Stream audio chunks via SSE |
+The Kokoro-82M TTS model (~313MB) is automatically downloaded from Hugging Face
+on the first TTS request. To avoid the initial delay, pre-download it:
 
-### POST /api/generate
-
-Generate speech and return complete audio file.
-
-**Request Body:**
-```json
-{
-  "text": "Hello, world!",
-  "voice": "af_heart",
-  "speed": 1.0,
-  "format": "wav"
-}
+```bash
+uv run python -c "from huggingface_hub import snapshot_download; snapshot_download('hexgrad/Kokoro-82M')"
 ```
-
-**Response:** Audio file (`audio/wav` or `audio/mpeg`)
-
-### POST /api/generate/stream
-
-Stream audio chunks in real-time via Server-Sent Events.
-
-**Request Body:**
-```json
-{
-  "text": "Hello, world!",
-  "voice": "af_heart",
-  "speed": 1.0
-}
-```
-
-**Response:** SSE stream
-```
-data: {"audio": "base64_encoded_wav_chunk"}
-data: {"audio": "base64_encoded_wav_chunk"}
-data: [DONE]
-```
-
-## Audio Format
-
-- **WAV:** 24kHz, 16-bit PCM, mono
-- **MP3:** 192kbps bitrate (requires ffmpeg)
 
 ## License
 
